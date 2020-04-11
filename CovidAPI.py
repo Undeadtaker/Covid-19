@@ -209,69 +209,6 @@ def delQ(qu_id):
     return jsonify(message = 'Patients moved to the system, please move them to other quarantines')
 
 
-    #for quaran in hosp.quarantines:
-    #    q_cap = quaran.capacity - len(quaran.patients)
-    #    if q_cap == 0:
-    #        pass
-    #    else:
-    #        start = 0
-    #        end = q_cap + 1
-    #        for p in SystemLi[start:end]:
-    #            print('start before change ', start)
-    #            print('end before change ', end)
-    #            quaran.patients.append(p)
-    #            space_left = quaran.capacity - len(quaran.patients)
-    #            print('space left ', space_left)
-    #            start += q_cap
-    #            end = len(SystemLi)
-    #            print('start after change', start)
-    #            print('end after change', end)
-    #            if space_left == 0:
-    #                break
-
-
-    #for quaran in hosp.quarantines:
-    #    q_cap = quaran.capacity - len(quaran.patients)
-    #    if q_cap == 0:
-    #        pass
-    #    else:
-    #        start = 0
-    #        end = q_cap + 1
-    #        for p in SystemLi[start:end]:
-    #            print(SystemLi[start:end])
-    #            print(start)
-    #            print(end)
-    #            quaran.patients.append(p)
-    #            if len(SystemLi[start:end]) == 1:
-    #                break
-    #            start += q_cap
-    #            q_cap+=q_cap
-    #            if q_cap < len(SystemLi)-1:
-    #                q_cap += len(SystemLi)-1
-
-
-    #for p in SystemLi:
-    #    for quaran in all_quarantines:
-    #        q_cap = quaran.capacity - len(quaran.patients)
-    #        if q_cap > 0:
-    #            var = SystemLi
-    #            for i in range(q_cap):
-    #                quaran.patients.append(p)
-    #                p.location = quaran.ID
-    #           var = SystemLi[q_cap::]
-
-
-    #for p in ms.System.patients:
-    #    if p.location == qu_id:
-    #        for quaran in all_quarantines:
-    #            q_cap = quaran.capacity - len(quaran.patients)
-    #            if q_cap > 0:
-    #                for i in range(q_cap):
-    #                    quaran.patients.append(p)
-    #                    p.location = quaran.ID
-    #            elif q_cap == 0:
-    #                continue
-    #            ms.System.patients.remove(p)
 
 # Delete a staff memeber from the hospital
 @app.route("/staff/<staff_id>", methods = ['DELETE'])
@@ -346,6 +283,74 @@ def getQuarantines(hospital_id):
 @app.route("/quarantines", methods = ['GET'])
 def showAllQAreas():
     return jsonify([q.showQuarantines() for q in ms.ShowAllQ()])
+        
+
+# Show all the stats
+@app.route("/stats", methods = ['GET'])
+def stats():
+    Li_sys = []
+    Li_hosp = []
+    Li_q = []
+
+    for p in ms.System.patients:
+        Li_sys.append(p)
+    for h in ms.getHospitals():
+        for p in h.patients:
+            Li_hosp.append(p)
+    for h in ms.getHospitals():
+        for q in h.quarantines:
+            for p in q.patients:
+                Li_q.append(p)
+
+    final = Li_sys + Li_hosp + Li_q
+    counter = 0
+    for p in final:
+        if p.infected == True:
+            counter+=1
+
+    if final == []:
+        return jsonify(important_note = 'No patients were found in the system')
+
+    infected = (counter/len(final)) * 100
+
+    final1 = Li_q + Li_hosp
+
+    occup_hosp = 0
+    occup_quaran = 0
+    for h in ms.getHospitals():
+        occup_hosp+=h.occupancy()
+    for h in ms.getHospitals():
+        for q in h.quarantines:
+            occup_quaran+=q.occupancy()
+
+    final_ocuppancy = occup_hosp + occup_quaran
+
+    if final1 == []:
+        occupancy = 0
+    else:
+        occupancy = final_ocuppancy / len(final1)
+
+
+
+    in_isolation = len(Li_q)
+    status_dead = 0
+    status_dispatched = 0
+
+    for p in Li_sys:
+        if p.dead == True:
+            status_dead+=1
+        elif p.dispatched == True:
+            status_dispatched += 1
+
+
+
+
+    return jsonify({'Percentage of all infected patients' : infected,
+                   'Percentage of occupancy in all the facilities' : occupancy,
+                   'Percentage of patients in isolation(quarantine)' : in_isolation/len(final),
+                   'Percentage of discharged patients' : (status_dispatched/len(final)) * 100,
+                   'Percentage of dead patients' : (status_dead/len(final)) * 100})
+
 
 #========================================== MOVING ==============================================#
 
